@@ -58,7 +58,7 @@ public class ProxyController {
                                        @RequestParam Map<String,String> params) {
 
         try {
-            ClientInfo clientInfo = cacheService.getClientInfo(extractBearerToken(authorization));
+            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
             IBaseResource resource = proxyService.read(clientInfo, resourceType, id, params);
 
@@ -99,7 +99,7 @@ public class ProxyController {
                                        @RequestParam Map<String,String> params) {
 
         try {
-            ClientInfo clientInfo = cacheService.getClientInfo(extractBearerToken(authorization));
+            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
             IBaseResource resource = proxyService.vread(clientInfo, resourceType, id, vid, params);
 
@@ -224,7 +224,7 @@ public class ProxyController {
 
     private ResponseEntity<String> doSearch(String authorization, String resourceType, Map<String,String> params) {
         try {
-            ClientInfo clientInfo = cacheService.getClientInfo(extractBearerToken(authorization));
+            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
             Bundle bundle = proxyService.search(clientInfo, resourceType, params);
 

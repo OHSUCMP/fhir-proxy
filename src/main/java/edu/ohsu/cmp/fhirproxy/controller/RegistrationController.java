@@ -25,7 +25,8 @@ public class RegistrationController {
     public ResponseEntity<String> registerClient(HttpSession session,
                                                  @RequestBody ClientInfo clientInfo) {
 
-        String key = cacheService.putClientInfo(clientInfo);
+        logger.info("registering client " + clientInfo.getClientId() + " for " + clientInfo.getServerUrl());
+        String key = cacheService.put(clientInfo);
         return new ResponseEntity<>(key, null, HttpStatus.OK);
     }
 }
