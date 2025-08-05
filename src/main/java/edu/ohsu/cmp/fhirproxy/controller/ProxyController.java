@@ -188,6 +188,7 @@ public class ProxyController {
     /**
      * Search for resources - GET strategy
      * Implements https://www.hl7.org/fhir/R4/http.html#search
+     * Also see: https://build.fhir.org/http.html#search
      * @param authorization
      * @param resourceType
      * @param params
@@ -203,6 +204,7 @@ public class ProxyController {
     /**
      * Search for resources - POST strategy
      * Implements https://www.hl7.org/fhir/R4/http.html#search
+     * Also see: https://build.fhir.org/http.html#search
      * @param authorization
      * @param resourceType
      * @param params

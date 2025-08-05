@@ -9,8 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Controller
 public class RegistrationController {
@@ -19,15 +20,11 @@ public class RegistrationController {
     @Autowired
     private CacheService cacheService;
 
+    @CrossOrigin
     @PostMapping("register")
     public ResponseEntity<String> registerClient(HttpSession session,
-                                                 @RequestParam String clientId,
-                                                 @RequestParam String serverUrl,
-                                                 @RequestParam String bearerToken,
-                                                 @RequestParam String patientId,
-                                                 @RequestParam String userId) {
+                                                 @RequestBody ClientInfo clientInfo) {
 
-        ClientInfo clientInfo = new ClientInfo(clientId, serverUrl, bearerToken, patientId, userId);
         String key = cacheService.putClientInfo(clientInfo);
         return new ResponseEntity<>(key, null, HttpStatus.OK);
     }

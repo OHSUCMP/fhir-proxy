@@ -61,10 +61,12 @@ public class ProxyService {
         }
         String params = StringUtils.join(paramsList, "&");
 
-        logger.info("search: " + resourceType + "?" + params);
+        String url = resourceType + "?" + params;
+
+        logger.info("search: " + url);
 
         Bundle bundle = client.search()
-                .byUrl(resourceType + "?" + params)
+                .byUrl(url)
                 .returnBundle(Bundle.class)
                 .execute();
 
