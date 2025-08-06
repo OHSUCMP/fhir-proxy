@@ -53,15 +53,24 @@ public class ProxyService {
     }
 
     public Bundle search(ClientInfo clientInfo, String resourceType, Map<String, String> paramsMap) {
+        return search(clientInfo, null, resourceType, paramsMap);
+    }
+
+    public Bundle search(ClientInfo clientInfo, String patientId, String resourceType, Map<String, String> paramsMap) {
         IGenericClient client = FhirUtil.buildClient(clientInfo, socketTimeout);
 
         List<String> paramsList = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(patientId)) {
+            String key = FhirUtil.getPatientSearchKeyForResource(resourceType);
+            paramsList.add(key + "=Patient/" + patientId);
+        }
+
         for (Map.Entry<String,String> entry : paramsMap.entrySet()) {
             paramsList.add(entry.getKey() + "=" + entry.getValue());
         }
-        String params = StringUtils.join(paramsList, "&");
 
-        String url = resourceType + "?" + params;
+        String url = resourceType + "?" + StringUtils.join(paramsList, "&");;
 
         logger.info("search: " + url);
 
@@ -71,6 +80,10 @@ public class ProxyService {
                 .execute();
 
         // todo : implement paging
+//        while (bundle.getLink(IBaseBundle.LINK_NEXT) != null) {
+//            bundle = client.loadPage().next(bundle).execute();
+//            patients.addAll(BundleUtil.toListOfResources(ctx, bundle));
+//        }
 
         return bundle;
     }

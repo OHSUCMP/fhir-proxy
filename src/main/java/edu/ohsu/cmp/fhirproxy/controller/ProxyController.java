@@ -242,6 +242,43 @@ public class ProxyController {
         return doSearch(authorization, resourceType, params);
     }
 
+    /**
+     * Patient search for resources - GET strategy
+     * Implements https://www.hl7.org/fhir/R4/http.html#search
+     * Also see: https://build.fhir.org/http.html#search
+     * @param authorization
+     * @param patientId
+     * @param resourceType
+     * @param params
+     * @return
+     */
+    @CrossOrigin
+    @GetMapping("/Patient/{patientId}/{resourceType}")
+    public ResponseEntity<String> patientSearchByGet(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+                                                     @PathVariable String patientId,
+                                                     @PathVariable String resourceType,
+                                                     @RequestParam Map<String,String> params) {
+        return doPatientSearch(authorization, patientId, resourceType, params);
+    }
+
+    /**
+     * Patient search for resources - POST strategy
+     * Implements https://www.hl7.org/fhir/R4/http.html#search
+     * Also see: https://build.fhir.org/http.html#search
+     * @param authorization
+     * @param patientId
+     * @param resourceType
+     * @param params
+     * @return
+     */
+    @CrossOrigin
+    @PostMapping("/Patient/{patientId}/{resourceType}/_search")
+    public ResponseEntity<String> patientSearchByPost(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+                                                      @PathVariable String patientId,
+                                                      @PathVariable String resourceType,
+                                                      @RequestParam Map<String,String> params) {
+        return doPatientSearch(authorization, patientId, resourceType, params);
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// private methods
@@ -255,6 +292,39 @@ public class ProxyController {
             ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
             Bundle bundle = proxyService.search(clientInfo, resourceType, params);
+
+            return new ResponseEntity<>(encodeResponse(bundle, params), responseHeaders, HttpStatus.OK);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
+
+        } catch (Exception e) {
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.EXCEPTION)
+                    .setDiagnostics(e.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private ResponseEntity<String> doPatientSearch(String authorization, String patientId,
+                                                   String resourceType, Map<String,String> params) {
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
+        try {
+            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
+
+            Bundle bundle = proxyService.search(clientInfo, patientId, resourceType, params);
 
             return new ResponseEntity<>(encodeResponse(bundle, params), responseHeaders, HttpStatus.OK);
 

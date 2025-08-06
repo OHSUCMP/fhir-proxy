@@ -33,5 +33,6 @@
     </root>
 
     <logger name="edu.ohsu.cmp.fhirproxy.controller.RegistrationController" level="DEBUG" />
+    <logger name="ca.uhn.fhir.context.FhirContext" level="WARN" />
 
 </configuration>
