@@ -1,5 +1,6 @@
 package edu.ohsu.cmp.fhirproxy.controller;
 
+import edu.ohsu.cmp.fhirproxy.exception.ClientInfoNotFoundException;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
 import edu.ohsu.cmp.fhirproxy.service.CacheService;
 import edu.ohsu.cmp.fhirproxy.service.ProxyService;
@@ -12,7 +13,6 @@ import org.hl7.fhir.r4.model.OperationOutcome;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +32,6 @@ public class ProxyController {
     private static final String PARAM_FORMAT = "_format";
     private static final String PARAM_PRETTY = "_pretty";
 
-    @Value("${socket.timeout:300000}")
-    private Integer socketTimeout;
-
     @Autowired
     private CacheService cacheService;
 
@@ -44,29 +41,40 @@ public class ProxyController {
     /**
      * Read a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#read
-     * Implements https://www.hl7.org/fhir/R4/http.html#vread
      * @param authorization
      * @param resourceType
      * @param id
      * @param params
      * @return
      */
+    @CrossOrigin
     @GetMapping("/{resourceType}/{id}")
     public ResponseEntity<String> read(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                        @PathVariable String resourceType,
                                        @PathVariable String id,
                                        @RequestParam Map<String,String> params) {
 
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
         try {
             ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
             IBaseResource resource = proxyService.read(clientInfo, resourceType, id, params);
 
-            HttpHeaders responseHeaders = new HttpHeaders();
             responseHeaders.add("ETag", resource.getMeta().getVersionId());
             responseHeaders.add("Last-Modified", resource.getMeta().getLastUpdated().toString());
 
-            return new ResponseEntity<>(encodeResponse(resource, params.get(PARAM_FORMAT)), responseHeaders, HttpStatus.OK);
+            return new ResponseEntity<>(encodeResponse(resource, params), responseHeaders, HttpStatus.OK);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
@@ -76,13 +84,12 @@ public class ProxyController {
                     .setCode(OperationOutcome.IssueType.EXCEPTION)
                     .setDiagnostics(e.getMessage());
 
-            return new ResponseEntity<>(encodeResponse(outcome, params.get(PARAM_FORMAT)), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
-     * Read a resource
-     * Implements https://www.hl7.org/fhir/R4/http.html#read
+     * Read a specific version of a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#vread
      * @param authorization
      * @param resourceType
@@ -91,6 +98,7 @@ public class ProxyController {
      * @param params
      * @return
      */
+    @CrossOrigin
     @GetMapping("/{resourceType}/{id}/_history/{vid}")
     public ResponseEntity<String> vread(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                        @PathVariable String resourceType,
@@ -98,16 +106,27 @@ public class ProxyController {
                                        @PathVariable String vid,
                                        @RequestParam Map<String,String> params) {
 
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
         try {
             ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
             IBaseResource resource = proxyService.vread(clientInfo, resourceType, id, vid, params);
 
-            HttpHeaders responseHeaders = new HttpHeaders();
             responseHeaders.add("ETag", resource.getMeta().getVersionId());
             responseHeaders.add("Last-Modified", resource.getMeta().getLastUpdated().toString());
 
-            return new ResponseEntity<>(encodeResponse(resource, params.get(PARAM_FORMAT)), responseHeaders, HttpStatus.OK);
+            return new ResponseEntity<>(encodeResponse(resource, params), responseHeaders, HttpStatus.OK);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
@@ -117,7 +136,7 @@ public class ProxyController {
                     .setCode(OperationOutcome.IssueType.EXCEPTION)
                     .setDiagnostics(e.getMessage());
 
-            return new ResponseEntity<>(encodeResponse(outcome, params.get(PARAM_FORMAT)), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -130,6 +149,7 @@ public class ProxyController {
      * @param params
      * @return
      */
+    @CrossOrigin
     @PutMapping("/{resourceType}/{id}")
     public ResponseEntity<String> update(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
@@ -147,6 +167,7 @@ public class ProxyController {
      * @param params
      * @return
      */
+    @CrossOrigin
     @PatchMapping("/{resourceType}/{id}")
     public ResponseEntity<String> patch(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                         @PathVariable String resourceType,
@@ -163,6 +184,7 @@ public class ProxyController {
      * @param id
      * @return
      */
+    @CrossOrigin
     @DeleteMapping("/{resourceType}/{id}")
     public ResponseEntity<String> delete(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
@@ -178,6 +200,7 @@ public class ProxyController {
      * @param params
      * @return
      */
+    @CrossOrigin
     @PostMapping("/{resourceType}")
     public ResponseEntity<String> create(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
@@ -194,6 +217,7 @@ public class ProxyController {
      * @param params
      * @return
      */
+    @CrossOrigin
     @GetMapping(value = {"/{resourceType}", "/{resourceType}/"})
     public ResponseEntity<String> searchByGet(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                               @PathVariable String resourceType,
@@ -210,6 +234,7 @@ public class ProxyController {
      * @param params
      * @return
      */
+    @CrossOrigin
     @PostMapping("/{resourceType}/_search")
     public ResponseEntity<String> searchByPost(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                                @PathVariable String resourceType,
@@ -223,12 +248,24 @@ public class ProxyController {
 ///
 
     private ResponseEntity<String> doSearch(String authorization, String resourceType, Map<String,String> params) {
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
         try {
             ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
             Bundle bundle = proxyService.search(clientInfo, resourceType, params);
 
-            return new ResponseEntity<>(encodeResponse(bundle, params.get(PARAM_FORMAT)), HttpStatus.OK);
+            return new ResponseEntity<>(encodeResponse(bundle, params), responseHeaders, HttpStatus.OK);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
@@ -238,15 +275,32 @@ public class ProxyController {
                     .setCode(OperationOutcome.IssueType.EXCEPTION)
                     .setDiagnostics(e.getMessage());
 
-            return new ResponseEntity<>(encodeResponse(outcome, params.get(PARAM_FORMAT)), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    private String encodeResponse(IBaseResource resource, String format) {
+    private void appendContentTypeResponseHeader(HttpHeaders responseHeaders, String format) {
+        if (StringUtils.isBlank(format) || doEncodeJson(format)) {
+            responseHeaders.add("Content-Type", "application/fhir+json");
+        } else if (doEncodeRDF(format)) {
+            responseHeaders.add("Content-Type", "application/fhir+turtle");
+        } else {
+            responseHeaders.add("Content-Type", "application/fhir+xml");
+        }
+    }
+
+    private String encodeResponse(IBaseResource resource, Map<String,String> params) {
+        String format = params.get(PARAM_FORMAT);
+        boolean prettyPrint = doPrettyPrint(params);
+
         String response;
-        if      (doEncodeJson(format))  response = FhirUtil.toJson(resource);
-        else if (doEncodeRDF(format))   response = FhirUtil.toRDF(resource);
-        else                            response = FhirUtil.toXml(resource);
+        if (StringUtils.isBlank(format) || doEncodeJson(format)) {
+            response = FhirUtil.toJson(resource, prettyPrint);
+        } else if (doEncodeRDF(format)) {
+            response = FhirUtil.toRDF(resource, prettyPrint);
+        } else {
+            response = FhirUtil.toXml(resource, prettyPrint);
+        }
         return response;
     }
 

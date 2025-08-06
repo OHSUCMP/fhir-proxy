@@ -8,24 +8,24 @@ import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 
 public class FhirUtil {
-    public static String toJson(IBaseResource r) {
+    public static String toJson(IBaseResource r, boolean pretty) {
         FhirContext ctx = FhirContext.forR4();
         IParser parser = ctx.newJsonParser();
-        parser.setPrettyPrint(true);
+        parser.setPrettyPrint(pretty);
         return parser.encodeResourceToString(r);
     }
 
-    public static String toXml(IBaseResource r) {
+    public static String toXml(IBaseResource r, boolean pretty) {
         FhirContext ctx = FhirContext.forR4();
         IParser parser = ctx.newXmlParser();
-        parser.setPrettyPrint(true);
+        parser.setPrettyPrint(pretty);
         return parser.encodeResourceToString(r);
     }
 
-    public static String toRDF(IBaseResource r) {
+    public static String toRDF(IBaseResource r, boolean pretty) {
         FhirContext ctx = FhirContext.forR4();
         IParser parser = ctx.newRDFParser();
-        parser.setPrettyPrint(true);
+        parser.setPrettyPrint(pretty);
         return parser.encodeResourceToString(r);
     }
 
