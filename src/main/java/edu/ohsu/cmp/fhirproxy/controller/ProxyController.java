@@ -1,5 +1,6 @@
 package edu.ohsu.cmp.fhirproxy.controller;
 
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import edu.ohsu.cmp.fhirproxy.exception.ClientInfoNotFoundException;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
 import edu.ohsu.cmp.fhirproxy.service.CacheService;
@@ -128,8 +129,20 @@ public class ProxyController {
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
+        } catch (InvalidRequestException ire) {
+            logger.error("invalid request: " + ire.getMessage());
+            logger.debug("stack trace: ", ire);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.INVALID)
+                    .setDiagnostics(ire.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.BAD_REQUEST);
+
         } catch (Exception e) {
-            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
+            logger.debug("stack trace: ", e);
 
             OperationOutcome outcome = new OperationOutcome();
             outcome.addIssue()
@@ -304,8 +317,20 @@ public class ProxyController {
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
+        } catch (InvalidRequestException ire) {
+            logger.error("invalid request: " + ire.getMessage());
+            logger.debug("stack trace: ", ire);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.INVALID)
+                    .setDiagnostics(ire.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.BAD_REQUEST);
+
         } catch (Exception e) {
-            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
+            logger.debug("stack trace: ", e);
 
             OperationOutcome outcome = new OperationOutcome();
             outcome.addIssue()
@@ -337,8 +362,20 @@ public class ProxyController {
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
+        } catch (InvalidRequestException ire) {
+            logger.error("invalid request: " + ire.getMessage());
+            logger.debug("stack trace: ", ire);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.INVALID)
+                    .setDiagnostics(ire.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.BAD_REQUEST);
+
         } catch (Exception e) {
-            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
+            logger.debug("stack trace: ", e);
 
             OperationOutcome outcome = new OperationOutcome();
             outcome.addIssue()
