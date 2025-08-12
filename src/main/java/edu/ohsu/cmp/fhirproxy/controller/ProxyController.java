@@ -1,6 +1,6 @@
 package edu.ohsu.cmp.fhirproxy.controller;
 
-import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import edu.ohsu.cmp.fhirproxy.exception.ClientInfoNotFoundException;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
 import edu.ohsu.cmp.fhirproxy.service.CacheService;
@@ -77,6 +77,10 @@ public class ProxyController {
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
+        } catch (BaseServerResponseException bsre) {
+            logger.error(bsre.getMessage());
+            return new ResponseEntity<>(encodeResponse(bsre.getOperationOutcome(), params), responseHeaders, bsre.getStatusCode());
+
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage(), e);
 
@@ -129,16 +133,9 @@ public class ProxyController {
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
-        } catch (InvalidRequestException ire) {
-            logger.error("invalid request: " + ire.getMessage());
-            logger.debug("stack trace: ", ire);
-
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.INVALID)
-                    .setDiagnostics(ire.getMessage());
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.BAD_REQUEST);
+        } catch (BaseServerResponseException bsre) {
+            logger.error(bsre.getMessage());
+            return new ResponseEntity<>(encodeResponse(bsre.getOperationOutcome(), params), responseHeaders, bsre.getStatusCode());
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
@@ -317,16 +314,9 @@ public class ProxyController {
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
-        } catch (InvalidRequestException ire) {
-            logger.error("invalid request: " + ire.getMessage());
-            logger.debug("stack trace: ", ire);
-
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.INVALID)
-                    .setDiagnostics(ire.getMessage());
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.BAD_REQUEST);
+        } catch (BaseServerResponseException bsre) {
+            logger.error(bsre.getMessage());
+            return new ResponseEntity<>(encodeResponse(bsre.getOperationOutcome(), params), responseHeaders, bsre.getStatusCode());
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
@@ -362,16 +352,9 @@ public class ProxyController {
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
 
-        } catch (InvalidRequestException ire) {
-            logger.error("invalid request: " + ire.getMessage());
-            logger.debug("stack trace: ", ire);
-
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.INVALID)
-                    .setDiagnostics(ire.getMessage());
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.BAD_REQUEST);
+        } catch (BaseServerResponseException bsre) {
+            logger.error(bsre.getMessage());
+            return new ResponseEntity<>(encodeResponse(bsre.getOperationOutcome(), params), responseHeaders, bsre.getStatusCode());
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());

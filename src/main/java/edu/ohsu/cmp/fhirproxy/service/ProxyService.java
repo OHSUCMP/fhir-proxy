@@ -24,7 +24,7 @@ public class ProxyService {
     private Integer socketTimeout;
 
     public IBaseResource read(ClientInfo clientInfo, String resourceType, String id, Map<String, String> paramsMap) {
-        logger.info("read: " + resourceType + "/" + id);
+        logger.info("read: " + clientInfo.getServerUrl() + "/" + resourceType + "/" + id);
 
         IGenericClient client = FhirUtil.buildClient(clientInfo, socketTimeout);
 
@@ -39,7 +39,7 @@ public class ProxyService {
     }
 
     public IBaseResource vread(ClientInfo clientInfo, String resourceType, String id, String vid, Map<String, String> paramsMap) {
-        logger.info("vread: " + resourceType + "/" + id + "/_history/" + vid);
+        logger.info("vread: " + clientInfo.getServerUrl() + "/" + resourceType + "/" + id + "/_history/" + vid);
 
         IGenericClient client = FhirUtil.buildClient(clientInfo, socketTimeout);
 
@@ -63,20 +63,19 @@ public class ProxyService {
         List<String> paramsList = new ArrayList<>();
 
         if (StringUtils.isNotBlank(patientId)) {
-            String key = FhirUtil.getPatientSearchKeyForResource(resourceType);
-            paramsList.add(key + "=Patient/" + patientId);
+            paramsList.add("patient=Patient/" + patientId);
         }
 
         for (Map.Entry<String,String> entry : paramsMap.entrySet()) {
             paramsList.add(entry.getKey() + "=" + entry.getValue());
         }
 
-        String url = resourceType + "?" + StringUtils.join(paramsList, "&");;
+        String path = resourceType + "?" + StringUtils.join(paramsList, "&");;
 
-        logger.info("search: " + url);
+        logger.info("search: " + clientInfo.getServerUrl() + "/" + path);
 
         Bundle bundle = client.search()
-                .byUrl(url)
+                .byUrl(path)
                 .returnBundle(Bundle.class)
                 .execute();
 

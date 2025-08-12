@@ -5,7 +5,6 @@ import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
-import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 
 public class FhirUtil {
@@ -39,13 +38,5 @@ public class FhirUtil {
         client.registerInterceptor(authInterceptor);
 
         return client;
-    }
-
-    public static String getPatientSearchKeyForResource(String resourceType) {
-        if (StringUtils.equalsIgnoreCase(resourceType, "Immunization")) {
-            return "patient";
-        } else {
-            return "subject";
-        }
     }
 }
