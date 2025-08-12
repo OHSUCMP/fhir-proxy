@@ -232,7 +232,7 @@ public class ProxyController {
     public ResponseEntity<String> searchByGet(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                               @PathVariable String resourceType,
                                               @RequestParam Map<String,String> params) {
-        return doSearch(authorization, resourceType, params);
+        return doSearch(authorization, null, resourceType, params);
     }
 
     /**
@@ -249,7 +249,7 @@ public class ProxyController {
     public ResponseEntity<String> searchByPost(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                                @PathVariable String resourceType,
                                                @RequestParam Map<String,String> params) {
-        return doSearch(authorization, resourceType, params);
+        return doSearch(authorization, null, resourceType, params);
     }
 
     /**
@@ -268,7 +268,7 @@ public class ProxyController {
                                                      @PathVariable String patientId,
                                                      @PathVariable String resourceType,
                                                      @RequestParam Map<String,String> params) {
-        return doPatientSearch(authorization, patientId, resourceType, params);
+        return doSearch(authorization, patientId, resourceType, params);
     }
 
     /**
@@ -287,52 +287,14 @@ public class ProxyController {
                                                       @PathVariable String patientId,
                                                       @PathVariable String resourceType,
                                                       @RequestParam Map<String,String> params) {
-        return doPatientSearch(authorization, patientId, resourceType, params);
+        return doSearch(authorization, patientId, resourceType, params);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// private methods
 ///
 
-    private ResponseEntity<String> doSearch(String authorization, String resourceType, Map<String,String> params) {
-        HttpHeaders responseHeaders = new HttpHeaders();
-        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
-
-        try {
-            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
-
-            Bundle bundle = proxyService.search(clientInfo, resourceType, params);
-
-            return new ResponseEntity<>(encodeResponse(bundle, params), responseHeaders, HttpStatus.OK);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
-
-        } catch (BaseServerResponseException bsre) {
-            logger.error(bsre.getMessage());
-            return new ResponseEntity<>(encodeResponse(bsre.getOperationOutcome(), params), responseHeaders, bsre.getStatusCode());
-
-        } catch (Exception e) {
-            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
-            logger.debug("stack trace: ", e);
-
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.EXCEPTION)
-                    .setDiagnostics(e.getMessage());
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    private ResponseEntity<String> doPatientSearch(String authorization, String patientId,
-                                                   String resourceType, Map<String,String> params) {
+    private ResponseEntity<String> doSearch(String authorization, String patientId, String resourceType, Map<String,String> params) {
         HttpHeaders responseHeaders = new HttpHeaders();
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 

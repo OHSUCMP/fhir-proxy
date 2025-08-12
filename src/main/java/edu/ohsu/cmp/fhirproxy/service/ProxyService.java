@@ -53,10 +53,6 @@ public class ProxyService {
         return resource;
     }
 
-    public Bundle search(ClientInfo clientInfo, String resourceType, Map<String, String> paramsMap) {
-        return search(clientInfo, null, resourceType, paramsMap);
-    }
-
     public Bundle search(ClientInfo clientInfo, String patientId, String resourceType, Map<String, String> paramsMap) {
         IGenericClient client = FhirUtil.buildClient(clientInfo, socketTimeout);
 
