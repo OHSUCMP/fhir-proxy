@@ -4,6 +4,7 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
 import edu.ohsu.cmp.fhirproxy.util.FhirUtil;
 import org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.slf4j.Logger;
@@ -79,12 +80,27 @@ public class ProxyService {
                 .returnBundle(Bundle.class)
                 .execute();
 
-        // todo : implement paging
-//        while (bundle.getLink(IBaseBundle.LINK_NEXT) != null) {
-//            bundle = client.loadPage().next(bundle).execute();
-//            patients.addAll(BundleUtil.toListOfResources(ctx, bundle));
-//        }
+        if (bundle.getLink(IBaseBundle.LINK_NEXT) == null) {
+            return bundle;
 
-        return bundle;
+        } else {
+            // see: https://hapifhir.io/hapi-fhir/docs/client/examples.html#fetch-all-pages-of-a-bundle
+
+            List<Bundle.BundleEntryComponent> entryList = new ArrayList<>();
+            entryList.addAll(bundle.getEntry());
+
+            while (bundle.getLink(IBaseBundle.LINK_NEXT) != null) {
+                logger.info("search: fetching next page...");
+                bundle = client.loadPage().next(bundle).execute();
+                entryList.addAll(bundle.getEntry());
+            }
+
+            Bundle compositeBundle = new Bundle();
+            compositeBundle.setType(Bundle.BundleType.SEARCHSET);
+            compositeBundle.setEntry(entryList);
+            compositeBundle.setTotal(compositeBundle.getEntry().size());
+
+            return compositeBundle;
+        }
     }
 }
