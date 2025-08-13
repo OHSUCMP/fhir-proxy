@@ -53,14 +53,11 @@ public class ProxyService {
         return resource;
     }
 
-    public Bundle search(ClientInfo clientInfo, String patientId, String resourceType, Map<String, String> paramsMap) {
+    public Bundle search(ClientInfo clientInfo, String resourceType, Map<String, String> paramsMap,
+                         Integer pageLimit) {
         IGenericClient client = FhirUtil.buildClient(clientInfo, socketTimeout);
 
         List<String> paramsList = new ArrayList<>();
-
-        if (StringUtils.isNotBlank(patientId)) {
-            paramsList.add("patient=Patient/" + patientId);
-        }
 
         for (Map.Entry<String,String> entry : paramsMap.entrySet()) {
             paramsList.add(entry.getKey() + "=" + entry.getValue());
@@ -83,6 +80,8 @@ public class ProxyService {
 
             List<Bundle.BundleEntryComponent> entryList = new ArrayList<>();
             entryList.addAll(bundle.getEntry());
+
+            // todo : implement pageLimit
 
             while (bundle.getLink(IBaseBundle.LINK_NEXT) != null) {
                 logger.info("search: fetching next page...");

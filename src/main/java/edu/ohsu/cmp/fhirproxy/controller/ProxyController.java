@@ -26,10 +26,12 @@ import java.util.Map;
  * This class implements FHIR RESTful APIs as described here: https://www.hl7.org/fhir/R4/http.html
  */
 @Controller
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RequestMapping("/proxy")
 public class ProxyController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    private static final String REQUEST_HEADER_PAGE_LIMIT = "X-Page-Limit";
     private static final String PARAM_FORMAT = "_format";
     private static final String PARAM_PRETTY = "_pretty";
 
@@ -48,7 +50,6 @@ public class ProxyController {
      * @param params
      * @return
      */
-    @CrossOrigin
     @GetMapping("/{resourceType}/{id}")
     public ResponseEntity<String> read(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                        @PathVariable String resourceType,
@@ -103,7 +104,6 @@ public class ProxyController {
      * @param params
      * @return
      */
-    @CrossOrigin
     @GetMapping("/{resourceType}/{id}/_history/{vid}")
     public ResponseEntity<String> vread(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                        @PathVariable String resourceType,
@@ -159,7 +159,6 @@ public class ProxyController {
      * @param params
      * @return
      */
-    @CrossOrigin
     @PutMapping("/{resourceType}/{id}")
     public ResponseEntity<String> update(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
@@ -177,7 +176,6 @@ public class ProxyController {
      * @param params
      * @return
      */
-    @CrossOrigin
     @PatchMapping("/{resourceType}/{id}")
     public ResponseEntity<String> patch(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                         @PathVariable String resourceType,
@@ -194,7 +192,6 @@ public class ProxyController {
      * @param id
      * @return
      */
-    @CrossOrigin
     @DeleteMapping("/{resourceType}/{id}")
     public ResponseEntity<String> delete(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
@@ -210,7 +207,6 @@ public class ProxyController {
      * @param params
      * @return
      */
-    @CrossOrigin
     @PostMapping("/{resourceType}")
     public ResponseEntity<String> create(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
@@ -223,16 +219,17 @@ public class ProxyController {
      * Implements https://www.hl7.org/fhir/R4/http.html#search
      * Also see: https://build.fhir.org/http.html#search
      * @param authorization
+     * @param pageLimit
      * @param resourceType
      * @param params
      * @return
      */
-    @CrossOrigin
     @GetMapping(value = {"/{resourceType}", "/{resourceType}/"})
     public ResponseEntity<String> searchByGet(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+                                              @RequestHeader(value = REQUEST_HEADER_PAGE_LIMIT, required = false) Integer pageLimit,
                                               @PathVariable String resourceType,
                                               @RequestParam Map<String,String> params) {
-        return doSearch(authorization, null, resourceType, params);
+        return doSearch(authorization, resourceType, params, pageLimit);
     }
 
     /**
@@ -240,68 +237,32 @@ public class ProxyController {
      * Implements https://www.hl7.org/fhir/R4/http.html#search
      * Also see: https://build.fhir.org/http.html#search
      * @param authorization
+     * @param pageLimit
      * @param resourceType
      * @param params
      * @return
      */
-    @CrossOrigin
     @PostMapping("/{resourceType}/_search")
     public ResponseEntity<String> searchByPost(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+                                               @RequestHeader(value = REQUEST_HEADER_PAGE_LIMIT, required = false) Integer pageLimit,
                                                @PathVariable String resourceType,
                                                @RequestParam Map<String,String> params) {
-        return doSearch(authorization, null, resourceType, params);
-    }
-
-    /**
-     * Patient search for resources - GET strategy
-     * Implements https://www.hl7.org/fhir/R4/http.html#search
-     * Also see: https://build.fhir.org/http.html#search
-     * @param authorization
-     * @param patientId
-     * @param resourceType
-     * @param params
-     * @return
-     */
-    @CrossOrigin
-    @GetMapping("/Patient/{patientId}/{resourceType}")
-    public ResponseEntity<String> patientSearchByGet(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
-                                                     @PathVariable String patientId,
-                                                     @PathVariable String resourceType,
-                                                     @RequestParam Map<String,String> params) {
-        return doSearch(authorization, patientId, resourceType, params);
-    }
-
-    /**
-     * Patient search for resources - POST strategy
-     * Implements https://www.hl7.org/fhir/R4/http.html#search
-     * Also see: https://build.fhir.org/http.html#search
-     * @param authorization
-     * @param patientId
-     * @param resourceType
-     * @param params
-     * @return
-     */
-    @CrossOrigin
-    @PostMapping("/Patient/{patientId}/{resourceType}/_search")
-    public ResponseEntity<String> patientSearchByPost(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
-                                                      @PathVariable String patientId,
-                                                      @PathVariable String resourceType,
-                                                      @RequestParam Map<String,String> params) {
-        return doSearch(authorization, patientId, resourceType, params);
+        return doSearch(authorization, resourceType, params, pageLimit);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// private methods
 ///
 
-    private ResponseEntity<String> doSearch(String authorization, String patientId, String resourceType, Map<String,String> params) {
+    private ResponseEntity<String> doSearch(String authorization, String resourceType, Map<String,String> params,
+                                            Integer pageLimit) {
         HttpHeaders responseHeaders = new HttpHeaders();
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
             ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
 
-            Bundle bundle = proxyService.search(clientInfo, patientId, resourceType, params);
+            Bundle bundle = proxyService.search(clientInfo, resourceType, params, pageLimit);
 
             return new ResponseEntity<>(encodeResponse(bundle, params), responseHeaders, HttpStatus.OK);
 
