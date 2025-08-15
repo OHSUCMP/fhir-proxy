@@ -72,7 +72,9 @@ public class ProxyService {
                 .returnBundle(Bundle.class)
                 .execute();
 
-        if (bundle.getLink(IBaseBundle.LINK_NEXT) == null) {
+        int total = bundle.getTotal();
+
+        if (bundle.getLink(IBaseBundle.LINK_NEXT) == null || (pageLimit != null && pageLimit == 1)) {
             return bundle;
 
         } else {
@@ -81,18 +83,26 @@ public class ProxyService {
             List<Bundle.BundleEntryComponent> entryList = new ArrayList<>();
             entryList.addAll(bundle.getEntry());
 
-            // todo : implement pageLimit
+            int pagesIncorporated = 1;
 
             while (bundle.getLink(IBaseBundle.LINK_NEXT) != null) {
-                logger.info("search: fetching next page...");
+                logger.info("search: fetching next page (" + (pagesIncorporated + 1) + ") from " +
+                        bundle.getLink(IBaseBundle.LINK_NEXT).getUrl());
+
                 bundle = client.loadPage().next(bundle).execute();
                 entryList.addAll(bundle.getEntry());
+                pagesIncorporated++;
+
+                if (pageLimit != null && pageLimit != 0 && pagesIncorporated >= pageLimit) {
+                    logger.info("search: reached page limit of " + pageLimit + ", stopping search.");
+                    break;
+                }
             }
 
             Bundle compositeBundle = new Bundle();
             compositeBundle.setType(Bundle.BundleType.SEARCHSET);
             compositeBundle.setEntry(entryList);
-            compositeBundle.setTotal(compositeBundle.getEntry().size());
+            compositeBundle.setTotal(total);
 
             return compositeBundle;
         }
