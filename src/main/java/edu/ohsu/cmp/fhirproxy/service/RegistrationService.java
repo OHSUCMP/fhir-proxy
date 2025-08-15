@@ -5,6 +5,7 @@ import com.auth0.jwt.interfaces.Payload;
 import edu.ohsu.cmp.fhirproxy.DeleteStaleClientInfoJob;
 import edu.ohsu.cmp.fhirproxy.exception.ClientInfoNotFoundException;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
+import edu.ohsu.cmp.fhirproxy.model.Registration;
 import edu.ohsu.cmp.fhirproxy.util.CryptoUtil;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.quartz.*;
@@ -20,7 +21,7 @@ import java.util.Calendar;
 import java.util.*;
 
 @Service
-public class CacheService {
+public class RegistrationService {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private final Map<String, ClientInfo> map;
     private final String salt;
@@ -28,7 +29,7 @@ public class CacheService {
     @Autowired
     private ApplicationContext ctx;
 
-    public CacheService() {
+    public RegistrationService() {
         this.map = new HashMap<>();
         this.salt = Base64.getEncoder().encodeToString(CryptoUtil.randomBytes(64));;
     }
@@ -37,16 +38,18 @@ public class CacheService {
         return map.containsKey(key);
     }
 
-    public String put(ClientInfo clientInfo) {
-        String key = Base64.getEncoder().encodeToString(DigestUtils.sha512(clientInfo.toString() + salt));
+    public Registration put(ClientInfo clientInfo) {
+        String accessToken = Base64.getEncoder().encodeToString(DigestUtils.sha512(clientInfo.toString() + salt));
 
-        if ( ! map.containsKey(key) ) {
-            map.put(key, clientInfo);
-
-            setupDeleteStaleClientInfoJob(clientInfo, key);
+        if ( ! map.containsKey(accessToken) ) {
+            map.put(accessToken, clientInfo);
+            setupDeleteStaleClientInfoJob(clientInfo, accessToken);
         }
 
-        return key;
+        return new Registration(
+                accessToken,
+                deriveExpirationTimestamp(clientInfo.getBearerToken())
+        );
     }
 
     public ClientInfo get(String key) throws ClientInfoNotFoundException {

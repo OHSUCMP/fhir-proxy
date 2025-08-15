@@ -3,10 +3,9 @@ package edu.ohsu.cmp.fhirproxy.controller;
 import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import edu.ohsu.cmp.fhirproxy.exception.ClientInfoNotFoundException;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
-import edu.ohsu.cmp.fhirproxy.service.CacheService;
+import edu.ohsu.cmp.fhirproxy.service.RegistrationService;
 import edu.ohsu.cmp.fhirproxy.service.ProxyService;
 import edu.ohsu.cmp.fhirproxy.util.FhirUtil;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
@@ -36,7 +35,7 @@ public class ProxyController {
     private static final String PARAM_PRETTY = "_pretty";
 
     @Autowired
-    private CacheService cacheService;
+    private RegistrationService registrationService;
 
     @Autowired
     private ProxyService proxyService;
@@ -55,12 +54,11 @@ public class ProxyController {
                                        @PathVariable String resourceType,
                                        @PathVariable String id,
                                        @RequestParam Map<String,String> params) {
-
         HttpHeaders responseHeaders = new HttpHeaders();
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
+            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
 
             IBaseResource resource = proxyService.read(clientInfo, resourceType, id, params);
 
@@ -76,7 +74,7 @@ public class ProxyController {
                     .setCode(OperationOutcome.IssueType.FORBIDDEN)
                     .setDiagnostics("invalid authorization");
 
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (BaseServerResponseException bsre) {
             logger.error(bsre.getMessage());
@@ -110,12 +108,11 @@ public class ProxyController {
                                        @PathVariable String id,
                                        @PathVariable String vid,
                                        @RequestParam Map<String,String> params) {
-
         HttpHeaders responseHeaders = new HttpHeaders();
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
+            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
 
             IBaseResource resource = proxyService.vread(clientInfo, resourceType, id, vid, params);
 
@@ -131,7 +128,7 @@ public class ProxyController {
                     .setCode(OperationOutcome.IssueType.FORBIDDEN)
                     .setDiagnostics("invalid authorization");
 
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (BaseServerResponseException bsre) {
             logger.error(bsre.getMessage());
@@ -157,14 +154,50 @@ public class ProxyController {
      * @param resourceType
      * @param id
      * @param params
+     * @param body
      * @return
      */
     @PutMapping("/{resourceType}/{id}")
     public ResponseEntity<String> update(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
                                          @PathVariable String id,
-                                         @RequestParam Map<String,String> params) {
-        throw new NotImplementedException("update not implemented");
+                                         @RequestParam Map<String,String> params,
+                                         @RequestBody(required = false) String body) { // todo : make body required when implementing
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
+        try {
+            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
+
+            // todo : implement this
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.NOTSUPPORTED)
+                    .setDiagnostics("update not supported");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
+
+        } catch (Exception e) {
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
+            logger.debug("stack trace: ", e);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.EXCEPTION)
+                    .setDiagnostics(e.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -174,14 +207,50 @@ public class ProxyController {
      * @param resourceType
      * @param id
      * @param params
+     * @param body
      * @return
      */
     @PatchMapping("/{resourceType}/{id}")
     public ResponseEntity<String> patch(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                         @PathVariable String resourceType,
                                         @PathVariable String id,
-                                        @RequestParam Map<String,String> params) {
-        throw new NotImplementedException("patch not implemented");
+                                        @RequestParam Map<String,String> params,
+                                        @RequestBody(required = false) String body) { // todo : make body required when implementing
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
+        try {
+            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
+
+            // todo : implement this
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.NOTSUPPORTED)
+                    .setDiagnostics("patch not supported");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
+
+        } catch (Exception e) {
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
+            logger.debug("stack trace: ", e);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.EXCEPTION)
+                    .setDiagnostics(e.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -195,8 +264,43 @@ public class ProxyController {
     @DeleteMapping("/{resourceType}/{id}")
     public ResponseEntity<String> delete(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
-                                         @PathVariable String id) {
-        throw new NotImplementedException("delete not implemented");
+                                         @PathVariable String id,
+                                         @RequestParam Map<String,String> params) { // todo : make body required when implementing
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
+        try {
+            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
+
+            // todo : implement this
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.NOTSUPPORTED)
+                    .setDiagnostics("delete not supported");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
+
+        } catch (Exception e) {
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
+            logger.debug("stack trace: ", e);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.EXCEPTION)
+                    .setDiagnostics(e.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -205,13 +309,49 @@ public class ProxyController {
      * @param authorization
      * @param resourceType
      * @param params
+     * @param body
      * @return
      */
     @PostMapping("/{resourceType}")
     public ResponseEntity<String> create(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
                                          @PathVariable String resourceType,
-                                         @RequestParam Map<String,String> params) {
-        throw new NotImplementedException("create not implemented");
+                                         @RequestParam Map<String,String> params,
+                                         @RequestBody(required = false) String body) { // todo : make body required when implementing
+        HttpHeaders responseHeaders = new HttpHeaders();
+        appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
+
+        try {
+            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
+
+            // todo : implement this
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.NOTSUPPORTED)
+                    .setDiagnostics("create not supported");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
+
+        } catch (ClientInfoNotFoundException cinfe) {
+            logger.warn("client info not found for authorization=" + authorization);
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
+                    .setDiagnostics("invalid authorization");
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
+
+        } catch (Exception e) {
+            logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
+            logger.debug("stack trace: ", e);
+
+            OperationOutcome outcome = new OperationOutcome();
+            outcome.addIssue()
+                    .setCode(OperationOutcome.IssueType.EXCEPTION)
+                    .setDiagnostics(e.getMessage());
+
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -260,7 +400,7 @@ public class ProxyController {
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = cacheService.get(extractBearerToken(authorization));
+            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
 
             Bundle bundle = proxyService.search(clientInfo, resourceType, params, pageLimit);
 
@@ -273,7 +413,7 @@ public class ProxyController {
                     .setCode(OperationOutcome.IssueType.FORBIDDEN)
                     .setDiagnostics("invalid authorization");
 
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.FORBIDDEN);
+            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (BaseServerResponseException bsre) {
             logger.error(bsre.getMessage());

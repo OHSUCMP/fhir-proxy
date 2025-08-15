@@ -1,6 +1,6 @@
 package edu.ohsu.cmp.fhirproxy;
 
-import edu.ohsu.cmp.fhirproxy.service.CacheService;
+import edu.ohsu.cmp.fhirproxy.service.RegistrationService;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
@@ -27,8 +27,8 @@ public class DeleteStaleClientInfoJob implements Job {
         ApplicationContext ctx = (ApplicationContext) jobDataMap.get(JOBDATA_APPLICATIONCONTEXT);
         String cacheKey = jobDataMap.getString(JOBDATA_CACHEKEY);
 
-        CacheService cacheService = ctx.getBean(CacheService.class);
-        if (cacheService.delete(cacheKey)) {
+        RegistrationService registrationService = ctx.getBean(RegistrationService.class);
+        if (registrationService.delete(cacheKey)) {
             logger.info("client info deleted for job: " + name);
         } else {
             logger.warn("client info not found for job: " + name + ", nothing to delete.  ???");
