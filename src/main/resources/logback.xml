@@ -32,7 +32,7 @@
         <appender-ref ref="FILE" />
     </root>
 
-    <logger name="edu.ohsu.cmp.fhirproxy.controller.RegistrationController" level="DEBUG" />
+    <logger name="edu.ohsu.cmp.fhirproxy.controller.ProxyController" level="DEBUG" />
     <logger name="ca.uhn.fhir.context.FhirContext" level="WARN" />
 
 </configuration>
