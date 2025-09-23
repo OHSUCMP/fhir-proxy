@@ -1,9 +1,7 @@
 package edu.ohsu.cmp.fhirproxy.controller;
 
 import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
-import edu.ohsu.cmp.fhirproxy.exception.ClientInfoNotFoundException;
 import edu.ohsu.cmp.fhirproxy.model.ClientInfo;
-import edu.ohsu.cmp.fhirproxy.service.RegistrationService;
 import edu.ohsu.cmp.fhirproxy.service.ProxyService;
 import edu.ohsu.cmp.fhirproxy.util.FhirUtil;
 import org.apache.commons.lang3.StringUtils;
@@ -30,12 +28,15 @@ import java.util.Map;
 public class ProxyController {
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    private static final String X_HEADER_CLIENT_ID = "X-Proxy-Client-Id";
+    private static final String X_HEADER_SERVER_URL = "X-Proxy-Server-Url";
+    private static final String X_HEADER_BEARER_TOKEN = "X-Proxy-Bearer-Token";
+    private static final String X_HEADER_PATIENT_ID = "X-Proxy-Patient-Id";
+    private static final String X_HEADER_USER_ID = "X-Proxy-User-Id";
+
     private static final String REQUEST_HEADER_PAGE_LIMIT = "X-Page-Limit";
     private static final String PARAM_FORMAT = "_format";
     private static final String PARAM_PRETTY = "_pretty";
-
-    @Autowired
-    private RegistrationService registrationService;
 
     @Autowired
     private ProxyService proxyService;
@@ -43,14 +44,22 @@ public class ProxyController {
     /**
      * Read a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#read
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param resourceType
      * @param id
      * @param params
      * @return
      */
     @GetMapping("/{resourceType}/{id}")
-    public ResponseEntity<String> read(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<String> read(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                       @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                       @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                       @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                       @RequestHeader(X_HEADER_USER_ID) String userId,
                                        @PathVariable String resourceType,
                                        @PathVariable String id,
                                        @RequestParam Map<String,String> params) {
@@ -58,7 +67,7 @@ public class ProxyController {
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
+            ClientInfo clientInfo = new ClientInfo(clientId, serverUrl, bearerToken, patientId, userId);
 
             IBaseResource resource = proxyService.read(clientInfo, resourceType, id, params);
 
@@ -66,15 +75,6 @@ public class ProxyController {
             responseHeaders.add("Last-Modified", resource.getMeta().getLastUpdated().toString());
 
             return new ResponseEntity<>(encodeResponse(resource, params), responseHeaders, HttpStatus.OK);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (BaseServerResponseException bsre) {
             logger.error(bsre.getMessage());
@@ -95,7 +95,11 @@ public class ProxyController {
     /**
      * Read a specific version of a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#vread
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param resourceType
      * @param id
      * @param vid
@@ -103,16 +107,20 @@ public class ProxyController {
      * @return
      */
     @GetMapping("/{resourceType}/{id}/_history/{vid}")
-    public ResponseEntity<String> vread(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
-                                       @PathVariable String resourceType,
-                                       @PathVariable String id,
-                                       @PathVariable String vid,
-                                       @RequestParam Map<String,String> params) {
+    public ResponseEntity<String> vread(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                        @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                        @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                        @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                        @RequestHeader(X_HEADER_USER_ID) String userId,
+                                        @PathVariable String resourceType,
+                                        @PathVariable String id,
+                                        @PathVariable String vid,
+                                        @RequestParam Map<String,String> params) {
         HttpHeaders responseHeaders = new HttpHeaders();
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
+            ClientInfo clientInfo = new ClientInfo(clientId, serverUrl, bearerToken, patientId, userId);
 
             IBaseResource resource = proxyService.vread(clientInfo, resourceType, id, vid, params);
 
@@ -120,15 +128,6 @@ public class ProxyController {
             responseHeaders.add("Last-Modified", resource.getMeta().getLastUpdated().toString());
 
             return new ResponseEntity<>(encodeResponse(resource, params), responseHeaders, HttpStatus.OK);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (BaseServerResponseException bsre) {
             logger.error(bsre.getMessage());
@@ -150,7 +149,11 @@ public class ProxyController {
     /**
      * Update a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#update
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param resourceType
      * @param id
      * @param params
@@ -158,7 +161,11 @@ public class ProxyController {
      * @return
      */
     @PutMapping("/{resourceType}/{id}")
-    public ResponseEntity<String> update(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<String> update(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                         @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                         @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                         @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                         @RequestHeader(X_HEADER_USER_ID) String userId,
                                          @PathVariable String resourceType,
                                          @PathVariable String id,
                                          @RequestParam Map<String,String> params,
@@ -167,8 +174,6 @@ public class ProxyController {
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
-
             // todo : implement this
 
             OperationOutcome outcome = new OperationOutcome();
@@ -177,15 +182,6 @@ public class ProxyController {
                     .setDiagnostics("update not supported");
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
@@ -203,7 +199,11 @@ public class ProxyController {
     /**
      * Patch a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#patch
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param resourceType
      * @param id
      * @param params
@@ -211,7 +211,11 @@ public class ProxyController {
      * @return
      */
     @PatchMapping("/{resourceType}/{id}")
-    public ResponseEntity<String> patch(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<String> patch(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                        @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                        @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                        @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                        @RequestHeader(X_HEADER_USER_ID) String userId,
                                         @PathVariable String resourceType,
                                         @PathVariable String id,
                                         @RequestParam Map<String,String> params,
@@ -220,8 +224,6 @@ public class ProxyController {
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
-
             // todo : implement this
 
             OperationOutcome outcome = new OperationOutcome();
@@ -230,15 +232,6 @@ public class ProxyController {
                     .setDiagnostics("patch not supported");
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
@@ -256,13 +249,21 @@ public class ProxyController {
     /**
      * Delete a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#delete
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param resourceType
      * @param id
      * @return
      */
     @DeleteMapping("/{resourceType}/{id}")
-    public ResponseEntity<String> delete(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<String> delete(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                         @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                         @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                         @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                         @RequestHeader(X_HEADER_USER_ID) String userId,
                                          @PathVariable String resourceType,
                                          @PathVariable String id,
                                          @RequestParam Map<String,String> params) { // todo : make body required when implementing
@@ -270,8 +271,6 @@ public class ProxyController {
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
-
             // todo : implement this
 
             OperationOutcome outcome = new OperationOutcome();
@@ -280,15 +279,6 @@ public class ProxyController {
                     .setDiagnostics("delete not supported");
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
@@ -306,14 +296,22 @@ public class ProxyController {
     /**
      * Create a resource
      * Implements https://www.hl7.org/fhir/R4/http.html#create
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param resourceType
      * @param params
      * @param body
      * @return
      */
     @PostMapping("/{resourceType}")
-    public ResponseEntity<String> create(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<String> create(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                         @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                         @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                         @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                         @RequestHeader(X_HEADER_USER_ID) String userId,
                                          @PathVariable String resourceType,
                                          @RequestParam Map<String,String> params,
                                          @RequestBody(required = false) String body) { // todo : make body required when implementing
@@ -321,8 +319,6 @@ public class ProxyController {
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
-
             // todo : implement this
 
             OperationOutcome outcome = new OperationOutcome();
@@ -331,15 +327,6 @@ public class ProxyController {
                     .setDiagnostics("create not supported");
 
             return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.METHOD_NOT_ALLOWED);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (Exception e) {
             logger.error("caught " + e.getClass().getSimpleName() + " while processing request - " + e.getMessage());
@@ -358,62 +345,70 @@ public class ProxyController {
      * Search for resources - GET strategy
      * Implements https://www.hl7.org/fhir/R4/http.html#search
      * Also see: https://build.fhir.org/http.html#search
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param pageLimit
      * @param resourceType
      * @param params
      * @return
      */
     @GetMapping(value = {"/{resourceType}", "/{resourceType}/"})
-    public ResponseEntity<String> searchByGet(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<String> searchByGet(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                              @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                              @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                              @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                              @RequestHeader(X_HEADER_USER_ID) String userId,
                                               @RequestHeader(value = REQUEST_HEADER_PAGE_LIMIT, required = false) Integer pageLimit,
                                               @PathVariable String resourceType,
                                               @RequestParam Map<String,String> params) {
-        return doSearch(authorization, resourceType, params, pageLimit);
+        return doSearch(clientId, serverUrl, bearerToken, patientId, userId, resourceType, params, pageLimit);
     }
 
     /**
      * Search for resources - POST strategy
      * Implements https://www.hl7.org/fhir/R4/http.html#search
      * Also see: https://build.fhir.org/http.html#search
-     * @param authorization
+     * @param clientId
+     * @param serverUrl
+     * @param bearerToken
+     * @param patientId
+     * @param userId
      * @param pageLimit
      * @param resourceType
      * @param params
      * @return
      */
     @PostMapping("/{resourceType}/_search")
-    public ResponseEntity<String> searchByPost(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<String> searchByPost(@RequestHeader(X_HEADER_CLIENT_ID) String clientId,
+                                               @RequestHeader(X_HEADER_SERVER_URL) String serverUrl,
+                                               @RequestHeader(X_HEADER_BEARER_TOKEN) String bearerToken,
+                                               @RequestHeader(X_HEADER_PATIENT_ID) String patientId,
+                                               @RequestHeader(X_HEADER_USER_ID) String userId,
                                                @RequestHeader(value = REQUEST_HEADER_PAGE_LIMIT, required = false) Integer pageLimit,
                                                @PathVariable String resourceType,
                                                @RequestParam Map<String,String> params) {
-        return doSearch(authorization, resourceType, params, pageLimit);
+        return doSearch(clientId, serverUrl, bearerToken, patientId, userId, resourceType, params, pageLimit);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////
 /// private methods
 ///
 
-    private ResponseEntity<String> doSearch(String authorization, String resourceType, Map<String,String> params,
+    private ResponseEntity<String> doSearch(String clientId, String serverUrl, String bearerToken, String patientId, String userId,
+                                            String resourceType, Map<String,String> params,
                                             Integer pageLimit) {
         HttpHeaders responseHeaders = new HttpHeaders();
         appendContentTypeResponseHeader(responseHeaders, params.get(PARAM_FORMAT));
 
         try {
-            ClientInfo clientInfo = registrationService.get(extractBearerToken(authorization));
+            ClientInfo clientInfo = new ClientInfo(clientId, serverUrl, bearerToken, patientId, userId);
 
             Bundle bundle = proxyService.search(clientInfo, resourceType, params, pageLimit);
 
             return new ResponseEntity<>(encodeResponse(bundle, params), responseHeaders, HttpStatus.OK);
-
-        } catch (ClientInfoNotFoundException cinfe) {
-            logger.warn("client info not found for authorization=" + authorization);
-            OperationOutcome outcome = new OperationOutcome();
-            outcome.addIssue()
-                    .setCode(OperationOutcome.IssueType.FORBIDDEN)
-                    .setDiagnostics("invalid authorization");
-
-            return new ResponseEntity<>(encodeResponse(outcome, params), responseHeaders, HttpStatus.UNAUTHORIZED);
 
         } catch (BaseServerResponseException bsre) {
             logger.error(bsre.getMessage());
